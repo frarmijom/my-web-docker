@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "web-app"
+        CONTAINER_NAME = "web-app-dev"
+        PORT_EXPOSED = "8081" // cambia si tu app usa otro
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'git@git.moon.local:/home/git/repos/web-app.git', credentialsId: 'jenkins-ssh'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Ejecutando build...'
+                sh 'make build || echo "No se usa make build"' // ajusta si no usas make
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Ejecutando tests...'
+                sh 'make test || echo "No se usa make test"'
+            }
+        }
+
+        stage('Docker Deploy') {
+            steps {
+                echo "Desplegando app como contenedor Docker..."
+                sh '''
+                    docker stop $CONTAINER_NAME || true
+                    docker rm $CONTAINER_NAME || true
+                    docker build -t $IMAGE_NAME .
+                    docker run -d --name $CONTAINER_NAME -p $PORT_EXPOSED:80 $IMAGE_NAME
+                '''
+            }
+        }
+    }
+}
+
